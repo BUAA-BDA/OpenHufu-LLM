@@ -17,5 +17,5 @@ class IIDSplitter(BaseSplitter):
         indices = np.arange(len(dataset))
         np.random.shuffle(indices)
         idx_slices = np.array_split(indices, self.n_clients)
-        subsets = [self.subset(dataset, idxs) for idxs in idx_slices]
+        subsets = [self.subset(dataset, [int(idx) for idx in idxs]) for idxs in idx_slices]
         return subsets
