@@ -4,10 +4,12 @@ from concurrent import futures
 from typing import Dict
 import threading
 
-from openhufu.private.net.connection import Connection, DriverInfo, ConParams
+from openhufu.private.net.connection import Connection
+from openhufu.private.net.net_params import DriverInfo
 from openhufu.private.drivers.proto.grpc_stream_pb2_grpc import grpcStreamFuncServicer, add_grpcStreamFuncServicer_to_server, grpcStreamFuncStub
 from openhufu.private.drivers.proto.grpc_stream_pb2 import Frame
 from openhufu.private.drivers.driver import Driver
+from openhufu.private.utlis.util import get_logger
 
 
 class StreamConnection(Connection):
@@ -46,7 +48,7 @@ class StreamConnection(Connection):
             print("Error: ", e)
         
     def close(self):
-        pass
+        self.driverInfo.driver.close_connection(self)
     
     def generate_output(self):
         ct = threading.current_thread()
@@ -59,7 +61,7 @@ class Servicer(grpcStreamFuncServicer):
     """Missing associated documentation comment in .proto file."""
     def __init__(self, server):
         self.server: Server = server    
-        
+        self.logger = get_logger("Servicer")
     
     def processStream(self, request_iterator, context):
         ct = threading.current_thread()
@@ -72,7 +74,7 @@ class Servicer(grpcStreamFuncServicer):
             t.start()
             yield from connection.generate_output()
         except Exception as e:
-            print("Error: ", e)
+            self.logger.error(f"Error processing stream: {e}")
         finally:
             if t:
                 t.join()
@@ -83,7 +85,7 @@ class Servicer(grpcStreamFuncServicer):
 class Server:
     def __init__(
         self,
-        driver,
+        driver: Driver,
         driverInfo: DriverInfo,
         max_workers,
     ):
@@ -91,6 +93,7 @@ class Server:
         self.driverInfo = driverInfo
         self.max_workers = max_workers
         self.grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
+        self.logger = get_logger("Server")  
         
         # create a servicer
         self.servicer = Servicer(self)
@@ -101,7 +104,7 @@ class Server:
         try:
             self.grpc_server.add_insecure_port(address=addr)
         except Exception as e:
-            print("Error: ", e)
+            self.logger.error(f"Error adding insecure port: {e}")
     
     def start(self):
         self.grpc_server.start()
@@ -117,6 +120,7 @@ class GrpcDriver(Driver):
     def __init__(self):
         super().__init__()
         self.max_workers = 100
+        self.logger = get_logger("GrpcDriver")
 
     def connect(self, driverInfo: DriverInfo):
         params = driverInfo.params
@@ -131,17 +135,17 @@ class GrpcDriver(Driver):
             received = stub.processStream(connection.generate_output())
             connection.process_frames(received)
         except Exception as e:
-            print("Error: ", e)
+            self.logger.error(f"Error connecting to {params.addr}: {e}")
         finally:
             if connection:
                 connection.close()
                 self.close_connection(connection)
     
-    def listen(self, connectionInfo: DriverInfo):
-        self.connectionInfo = connectionInfo
+    def listen(self, driverInfo: DriverInfo):
+        self.driverInfo = driverInfo
         self.server = Server(
             self,
-            self.connectionInfo,
+            self.driverInfo,
             self.max_workers
         )
         self.server.start()

@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import grpc_stream_pb2 as grpc__stream__pb2
+import openhufu.private.drivers.proto.grpc_stream_pb2 as grpc__stream__pb2
 
 GRPC_GENERATED_VERSION = '1.68.1'
 GRPC_VERSION = grpc.__version__
