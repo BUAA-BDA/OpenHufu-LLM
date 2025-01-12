@@ -63,8 +63,7 @@ class StreamConnection(Connection):
             logger.info(f"Processing frames on {ct.name}")
             for frame in request_iterator:
                 if not isinstance(frame, Frame):
-                    error_message = f"Invalid item in frame_queue: expected Frame, got {type(frame).__name__}"
-                    logger.error(error_message)
+                    logger.error(f"Invalid item in frame_queue: expected Frame, got {type(frame).__name__}")
                     continue
                 
                 if self.frame_receiver:
@@ -108,26 +107,24 @@ class Servicer(grpcStreamFuncServicer):
         ct = threading.current_thread()
         
         self.logger.info(f"Processing stream on {ct.name}")
-        for frame in request_iterator:
-            self.logger.info(f"Frame: {frame}")
         # create a new connection
-        # try:
-        #     connection = StreamConnection(driverInfo=self.server.driver.driverInfo)
-        #     self.server.driver.add_connection(connection)
-        #     t = threading.Thread(target=connection.process_frames, args=(request_iterator,), daemon=True)
-        #     t.start()
-        #     yield from connection.generate_output()
-        # except Exception as e:
-        #     self.logger.error(f"Error processing stream: {e}")
-        #     if t.is_alive():
-        #         self.logger.warning("Thread still running, attempting to join with timeout.")
-        #         t.join(timeout=5)  # 设置超时，避免永久阻塞
-        # finally:
-        #     if t and t.is_alive():
-        #         t.join(timeout=5)
-        #     if connection:
-        #         connection.close()
-        #         self.server.driver.close_connection(connection)
+        try:
+            connection = StreamConnection(driverInfo=self.server.driver.driverInfo)
+            self.server.driver.add_connection(connection)
+            t = threading.Thread(target=connection.process_frames, args=(request_iterator,), daemon=True)
+            t.start()
+            yield from connection.generate_output()
+        except Exception as e:
+            self.logger.error(f"Error processing stream: {e}")
+            if t.is_alive():
+                self.logger.warning("Thread still running, attempting to join with timeout.")
+                t.join(timeout=5)  # 设置超时，避免永久阻塞
+        finally:
+            if t and t.is_alive():
+                t.join(timeout=5)
+            if connection:
+                connection.close()
+                self.server.driver.close_connection(connection)
     
 class Server:
     def __init__(
