@@ -2,6 +2,7 @@ import os
 import requests
 import time
 
+
 def download_url(url, path):
     file_name = os.path.basename(url)
     if '.' in file_name:
@@ -21,6 +22,7 @@ def download_url(url, path):
         file.write(response.content)
 
     return file_path
+
 
 def get_file_path_without_name(file_path):
     return os.path.dirname(file_path)

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package bio_stream;
+
+service grpcStreamFunc {
+    rpc processStream (stream Frame) returns (stream Frame) {}
+}
+
+message Frame {
+    int32 seq = 1;
+    bytes data = 2;
+}

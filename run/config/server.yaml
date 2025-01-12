@@ -1,0 +1,4 @@
+name: "server"
+host: "localhost"
+port: 8002
+schema: "grpc"
