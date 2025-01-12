@@ -15,7 +15,9 @@ from openhufu.private.net.endpoint_wrapper import EndpointWrapper
 
 con_lock = threading.Lock()
 con_count = 0
+
 def get_connection_uid():
+    global con_count
     with con_lock:
         con_count += 1
     return f"conn_{con_count:05d}"
@@ -37,13 +39,13 @@ class ConnManager(ConnMonitor):
         
         self.local_endpoint = local_endpoint
         
-        self.connections = Dict[str, ConnectionWrapper]
+        self.connections : Dict[str, ConnectionWrapper] = {}
     
     
     def add_connection_driver(self, driver: Driver, params: ConParams, mode: DriverMode):
         uid = get_connection_uid()
         driver.register_monitor(self)
-        driverInfo = DriverInfo(uid=uid, driver=driver, params=params, mode=mode)
+        driverInfo = DriverInfo(uid=uid, driver=driver, params=params, mode=mode, monitor=self, started=False)
         with self.lock:
             self.driverInfos[uid] = driverInfo
         
@@ -54,7 +56,6 @@ class ConnManager(ConnMonitor):
     def _start_driver(self, driverInfo: DriverInfo):
         if driverInfo.started:
             return
-
         self.conn_executor.submit(self.start_driver_task, driverInfo)
         
         
@@ -64,6 +65,25 @@ class ConnManager(ConnMonitor):
             for driverInfo in self.driverInfos.values():
                 self._start_driver(driverInfo)
         
+        
+    def stop(self):
+        with self.lock:
+            self.started = False
+            for driverInfo in self.driverInfos.values():
+                driverInfo.driver.stop()
+                
+            self.driverInfos.clear()
+            
+        with self.lock:
+            for conn in self.connections.values():
+                conn.close()
+            
+        self.connections.clear()
+        
+        self.conn_executor.shutdown()
+        self.frame_manager_executor.shutdown()
+        
+
         
     def start_driver_task(self, driverInfo: DriverInfo):
         driverInfo.started = True
@@ -86,7 +106,7 @@ class ConnManager(ConnMonitor):
         with self.lock:
             self.connections[connection.get_name()] = connWrapper
             
-        connection.register_frame_receiver(FrameReceiverWrapper(connWrapper=connWrapper, conn_manager=self))
+        connection.register_frame_receiver(FrameProcessor(connWrapper=connWrapper, conn_manager=self))
         
         # TODO: send remember the target address
         if connection.get_name() not in self.connections:
@@ -95,8 +115,9 @@ class ConnManager(ConnMonitor):
         
         self.logger.info(f"New connection: {connection.get_name()}")
         
-        # if on server end, send the endpoint msg to client.
-        if connection.driverInfo.mode == DriverMode.SERVER:
+        # if on client end, send the endpoint msg to client.
+        if connection.driverInfo.mode == DriverMode.CLIENT:
+            self.logger.info(f"Sending handshake to {connection.get_name()}")
             connWrapper.send_handshake()
         
     
@@ -137,11 +158,13 @@ class ConnManager(ConnMonitor):
         
         
         
-class FrameReceiverWrapper(FrameReceiver):
+class FrameProcessor(FrameReceiver):
     def __init__(self, connWrapper: ConnectionWrapper, conn_manager: ConnManager):
         self.connWrapper = connWrapper
         self.conn_manager = conn_manager
+        self.logger = get_logger("FrameProcessor")
     
     
     def process_frame(self, frame_data):
+        self.logger.info(f"Processing frame: {frame_data}") 
         self.conn_manager.process_frame(self.connWrapper, frame_data)

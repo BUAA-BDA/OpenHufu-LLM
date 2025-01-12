@@ -26,5 +26,5 @@ class DriverInfo:
     monitor: "ConnMonitor"
     params: ConParams 
     mode: DriverMode
-    started: bool
+    started: bool = False
     

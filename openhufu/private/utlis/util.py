@@ -21,8 +21,11 @@ def load_config(path: str) -> BaseConfig:
 def get_logger(name: str, level=logging.INFO):
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    # formatter = logging.Formatter(
+    #     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    # )
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s"
     )
     ch = logging.StreamHandler()
     ch.setFormatter(formatter)

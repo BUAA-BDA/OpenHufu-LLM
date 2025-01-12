@@ -12,7 +12,6 @@ class FederatedServer:
         self.logger = get_logger(__name__)
 
 
-
     def _register_server_cbs(self):
         # self.cell.register_request_cb(CellChannel.SERVER_MAIN, CellChannelTopic.Challenge, self.client_challenge)
         self.cell.register_request_cb(CellChannel.SERVER_MAIN, CellChannelTopic.Register, self.client_register)
@@ -21,14 +20,18 @@ class FederatedServer:
     def client_challenge(self, request):
         pass
     
+    
     def client_register(self, request):
         self.logger.info("Client registered")
+    
     
     def deploy(self):
         self.cell = Cell(self.config)
         self.cell.start()
         
         self._register_server_cbs()
+        
+        self.cell.stop()
         
     
         

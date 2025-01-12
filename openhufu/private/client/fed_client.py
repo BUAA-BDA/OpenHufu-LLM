@@ -12,9 +12,11 @@ class FederatedClient:
         self.cell = ClientCell(config=self.config)
         self.cell.start()
         
+        self.cell.stop()
+        
         
     def set_up(self):    
-        schema_location = self.config.scheme + "://" + self.config.host + ":" + str(self.config.port)
+        schema_location = self.config.host + ":" + str(self.config.port)
         self.config.addr = schema_location
         
         if not self.cell:

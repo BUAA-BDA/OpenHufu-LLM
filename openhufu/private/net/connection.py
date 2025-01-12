@@ -61,5 +61,9 @@ class Connection(ABC):
     def send_frame(self, frame):
         pass
     
+    
+    @abstractmethod
+    def close(self):
+        pass
 
 

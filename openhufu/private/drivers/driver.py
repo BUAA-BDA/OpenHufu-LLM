@@ -31,9 +31,12 @@ class Driver:
     def listen(self, connection: DriverInfo):
         pass
     
+    @abstractmethod
+    def close(self):
+        pass
     
     def add_connection(self, connection: Connection):
-        connection.state = ConnState.CONNECT
+        connection.state = ConnState.CONNECTED
         with self.conn_lock:
             self.connections[connection.name] = connection    
         
@@ -56,6 +59,11 @@ class Driver:
     def _notify_monitor(self, connection: Connection):
         self.conn_monitor.state_change(connection)
         
+    
+    def close_all_connections(self):
+        with self.conn_lock:
+            for name in self.connections.keys():
+                self.connections[name].close()
         
         
 

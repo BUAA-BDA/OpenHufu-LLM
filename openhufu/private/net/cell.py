@@ -25,24 +25,24 @@ class Cell:
         
     def _create_external_listener(self):
         driver = GrpcDriver()
-        params = ConParams(host=self.node_info.host, port=self.node_info.port, addr=self.node_info.addr, scheme=self.node_info.scheme)
+        params = ConParams(host=self.node_info.host, port=self.node_info.port, addr=self.node_info.addr, scheme=self.node_info.schema)
         mode = DriverMode.SERVER
         self.conn_manager.add_connection_driver(driver=driver, params=params, mode=mode)
         
         
     def _create_external_connector(self):
         driver = GrpcDriver()
-        params = ConParams(host=self.node_info.host, port=self.node_info.port, addr=self.node_info.addr, scheme=self.node_info.scheme)
+        params = ConParams(host=self.node_info.host, port=self.node_info.port, addr=self.node_info.addr, scheme=self.node_info.schema)
         mode = DriverMode.CLIENT
         self.conn_manager.add_connection_driver(driver=driver, params=params, mode=mode)
     
     
     def _start_cell_for_client(self):
-        self._create_external_listener()
+        self._create_external_connector()
     
     
     def _start_cell_for_server(self):
-        self._create_external_connector()
+        self._create_external_listener()
     
     
     def start(self):
@@ -52,6 +52,11 @@ class Cell:
             self._start_cell_for_server()
 
         self.conn_manager.start()
+        
+    
+    def stop(self):
+        self.conn_manager.stop()
+        
     
     def register_request_cb(self, channel: CellChannel, topic: CellChannelTopic, cb):
         

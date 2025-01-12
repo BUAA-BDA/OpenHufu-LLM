@@ -1,8 +1,8 @@
 import grpc
 import queue
 from concurrent import futures
-from typing import Dict
 import threading
+import signal
 
 from openhufu.private.net.connection import Connection
 from openhufu.private.net.net_params import DriverInfo
@@ -11,6 +11,7 @@ from openhufu.private.drivers.proto.grpc_stream_pb2 import Frame
 from openhufu.private.drivers.driver import Driver
 from openhufu.private.utlis.util import get_logger
 
+logger = get_logger("stream_grpc_driver")
 
 class StreamConnection(Connection):
     """StreamConnection class for handling network connections.
@@ -22,8 +23,10 @@ class StreamConnection(Connection):
     
     def __init__(self, driverInfo: DriverInfo):
         super().__init__(driverInfo=driverInfo)
+        self.closed = False
         self.frame_queue = queue.Queue()
         self.queue_lock = threading.Lock()  
+    
     
     def send_frame(self, frame):
         try:
@@ -31,31 +34,68 @@ class StreamConnection(Connection):
             with self.queue_lock:
                 self.frame_queue.put(Frame(seq=StreamConnection.seq_num, data=bytes(frame)))
         except Exception as e:
-            print("Error: ", e)
+            logger.error(f"Error sending frame: {e}")
+            
+    
+    def iter_queue(self):
+        """迭代队列中的帧"""
+        if self.closed:
+            raise StopIteration
+        
+        while True: 
+            try:
+                yield self.frame_queue.get(timeout=5)
+            except queue.Empty:
+                # 如果队列为空且超时，记录警告并继续检查状态
+                if self.closed:
+                    logger.info("Connection closed, stopping frame iteration.")
+                    raise StopIteration
+                logger.warning("Frame queue is empty or processing timeout.")
+            except Exception as e:
+                logger.error(f"Error iterating frame queue: {e}")
+                raise StopIteration
+    
             
     def process_frames(self, request_iterator):
         ct = threading.current_thread()
         
         try:
+            logger.info(f"Processing frames on {ct.name}")
             for frame in request_iterator:
-                assert isinstance(frame, Frame)
+                if not isinstance(frame, Frame):
+                    error_message = f"Invalid item in frame_queue: expected Frame, got {type(frame).__name__}"
+                    logger.error(error_message)
+                    continue
                 
                 if self.frame_receiver:
                     self.frame_receiver.process_frame(frame.data)
                 else:
-                    print("No frame receiver registered")
+                    logger.error("No frame receiver")
         except Exception as e:
-            print("Error: ", e)
-        
+            logger.error(f"Error processing frames: {e}")
+ 
+ 
     def close(self):
-        self.driverInfo.driver.close_connection(self)
+        self.closed = True
+        self.frame_queue.shutdown()
+    
     
     def generate_output(self):
-        ct = threading.current_thread()
-        for i in self.frame_queue:
-            assert isinstance(i, Frame)
-            yield i
-
+        try:
+            ct = threading.current_thread()
+            logger.info(f"Generating output on {ct.name}")
+            for i in self.iter_queue():
+                if not isinstance(i, Frame):
+                    error_message = f"Invalid item in frame_queue: expected Frame, got {type(i).__name__}"
+                    logger.error(error_message)
+                    continue
+                    
+                yield i
+        except Exception as e:
+            logger.error(f"Error generating output: {e}")
+        finally:
+            logger.info("Output generation complete")
+        
     
 class Servicer(grpcStreamFuncServicer):
     """Missing associated documentation comment in .proto file."""
@@ -63,24 +103,31 @@ class Servicer(grpcStreamFuncServicer):
         self.server: Server = server    
         self.logger = get_logger("Servicer")
     
+    
     def processStream(self, request_iterator, context):
         ct = threading.current_thread()
         
+        self.logger.info(f"Processing stream on {ct.name}")
+        for frame in request_iterator:
+            self.logger.info(f"Frame: {frame}")
         # create a new connection
-        try:
-            connection = StreamConnection(driverInfo=self.server.driver.driverInfo)
-            self.server.driver.add_connection(connection)
-            t = threading.Thread(target=connection.process_frames, args=(request_iterator,))
-            t.start()
-            yield from connection.generate_output()
-        except Exception as e:
-            self.logger.error(f"Error processing stream: {e}")
-        finally:
-            if t:
-                t.join()
-            if connection:
-                connection.close()
-                self.server.driver.close_connection(connection)
+        # try:
+        #     connection = StreamConnection(driverInfo=self.server.driver.driverInfo)
+        #     self.server.driver.add_connection(connection)
+        #     t = threading.Thread(target=connection.process_frames, args=(request_iterator,), daemon=True)
+        #     t.start()
+        #     yield from connection.generate_output()
+        # except Exception as e:
+        #     self.logger.error(f"Error processing stream: {e}")
+        #     if t.is_alive():
+        #         self.logger.warning("Thread still running, attempting to join with timeout.")
+        #         t.join(timeout=5)  # 设置超时，避免永久阻塞
+        # finally:
+        #     if t and t.is_alive():
+        #         t.join(timeout=5)
+        #     if connection:
+        #         connection.close()
+        #         self.server.driver.close_connection(connection)
     
 class Server:
     def __init__(
@@ -89,7 +136,7 @@ class Server:
         driverInfo: DriverInfo,
         max_workers,
     ):
-        self.driver = driver
+        self.driver: Driver = driver
         self.driverInfo = driverInfo
         self.max_workers = max_workers
         self.grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
@@ -105,10 +152,18 @@ class Server:
             self.grpc_server.add_insecure_port(address=addr)
         except Exception as e:
             self.logger.error(f"Error adding insecure port: {e}")
+        finally:
+            self.logger.info(f"Add insecure port: {addr}")
+    
     
     def start(self):
+        ct = threading.current_thread()
         self.grpc_server.start()
+        self.logger.info(f"Server starting on {self.driverInfo.params.addr}, thread: {ct.name}")
+        
+        
         self.grpc_server.wait_for_termination()
+    
     
     def stop(self):
         self.grpc_server.stop(grace=0.5)
@@ -120,7 +175,9 @@ class GrpcDriver(Driver):
     def __init__(self):
         super().__init__()
         self.max_workers = 100
+        self.server = None
         self.logger = get_logger("GrpcDriver")
+
 
     def connect(self, driverInfo: DriverInfo):
         params = driverInfo.params
@@ -132,14 +189,21 @@ class GrpcDriver(Driver):
             stub = grpcStreamFuncStub(channel)
             connection = StreamConnection(driverInfo=driverInfo)
             self.add_connection(connection)
+            self.logger.info(f"查看是否有frame: {connection.frame_queue.qsize()}")
+
             received = stub.processStream(connection.generate_output())
-            connection.process_frames(received)
+            for frame in received:
+                self.logger.info(f"Received frame: {frame}")
+            # connection.process_frames(received)
+        except grpc.RpcError as e:
+            self.logger.error(f"gRPC connection error: {e}")
         except Exception as e:
             self.logger.error(f"Error connecting to {params.addr}: {e}")
         finally:
             if connection:
                 connection.close()
                 self.close_connection(connection)
+    
     
     def listen(self, driverInfo: DriverInfo):
         self.driverInfo = driverInfo
@@ -149,3 +213,11 @@ class GrpcDriver(Driver):
             self.max_workers
         )
         self.server.start()
+        
+        
+    def stop(self):
+        if self.server is not None:
+            self.server.stop()
+        self.close_all_connections()
+        
+    

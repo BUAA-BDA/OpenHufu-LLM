@@ -11,6 +11,8 @@ class ClientDeployer:
 
 
     def create_client(self):
+        self.config.addr = self.config.host + ":" + str(self.config.port)
+        
         client = FederatedClient(config=self.config)
         self.logger.info(f"Client {self.config} created")
         
