@@ -4,6 +4,8 @@ from openhufu.private.utlis.util import get_logger
 from openhufu.private.utlis.defs import CellChannel, CellChannelTopic
 from openhufu.private.utlis.config_class import ServerConfig
 from openhufu.private.net.cell import Cell
+from openhufu.private.net.message import Message
+from openhufu.private.utlis.defs import CellChannel, CellChannelTopic, HeaderKey
 
 class FederatedServer:
     def __init__(self, config: ServerConfig):
@@ -17,12 +19,12 @@ class FederatedServer:
         self.cell.register_request_cb(CellChannel.SERVER_MAIN, CellChannelTopic.Register, self.client_register)
         
     
-    def client_challenge(self, request):
-        pass
-    
-    
-    def client_register(self, request):
-        self.logger.info("Client registered")
+    def client_register(self, message: Message):
+        source_endpoint = message.get_from_headers(HeaderKey.SOURCE_ENDPOINT)
+        dest_endpoint = message.get_from_headers(HeaderKey.DESTINATION_ENDPOINT)
+        self.logger.info(f"Client {source_endpoint} registered")
+        
+        
     
     
     def deploy(self):

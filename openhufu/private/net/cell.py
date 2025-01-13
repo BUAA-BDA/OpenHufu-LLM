@@ -6,6 +6,9 @@ from openhufu.private.net.connection_manager import ConnManager
 from openhufu.private.net.net_params import ConParams, DriverMode, DriverInfo
 from openhufu.private.drivers.stream_grpc_driver import GrpcDriver
 from openhufu.private.net.endpoint import Endpoint
+from openhufu.private.net.message import Message
+from openhufu.private.utlis.util import get_logger
+from openhufu.private.utlis.defs import HeaderKey, CellChannelTopic
 
 
 class Cell:
@@ -13,10 +16,14 @@ class Cell:
     
     def __init__(self, config: BaseConfig):
         self.node_info : BaseConfig = config
+        self.logger = get_logger(__name__)
         
-        endpoint = Endpoint(name=self.node_info.name, addr=self.node_info.addr)
+        self.local_endpoint = Endpoint(name=self.node_info.name)
         
-        self.conn_manager = ConnManager(self, endpoint)
+        self.conn_manager = ConnManager(self.local_endpoint)
+        
+        self.conn_manager.register_message_receiver(self)
+        
         self.registered_cbs = {}
         
         self.is_client = None
@@ -63,11 +70,15 @@ class Cell:
         if not callable(cb):
             raise Exception("Callback is not callable")
         
-        if channel not in self.registered_cbs:
+        if topic not in self.registered_cbs.keys():
             self.registered_cbs[topic] = cb
             
             
-    def process_message(self, msg):
-        # TODO: Implement message processing
-        if True:
-            self.registered_cbs[CellChannelTopic.Register](msg)
+    def process_message(self, message: Message):
+        channel_topic = message.get_from_headers(HeaderKey.CHANNEL_TOPIC)
+        if channel_topic == CellChannelTopic.Register:
+            self.registered_cbs[CellChannelTopic.Register](message)
+            
+            
+    def send_message(self, message: Message):
+        self.conn_manager.send_message(message)

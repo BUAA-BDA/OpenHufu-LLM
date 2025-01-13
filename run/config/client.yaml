@@ -2,3 +2,4 @@ name: "site-1"
 host: "localhost"
 port: 8002
 schema: "grpc"
+server_name: "server"

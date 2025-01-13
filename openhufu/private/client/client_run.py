@@ -4,8 +4,10 @@ from pathlib import Path
 
 from openhufu.private.client.client_deployer import ClientDeployer
 from openhufu.private.utlis.config_class import BaseConfig
-from openhufu.private.utlis.util import load_config
+from openhufu.private.utlis.util import load_config, get_logger
 
+
+logger = get_logger(__name__) 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Federated Server")
@@ -29,4 +31,7 @@ if __name__ == "__main__":
     
     client.set_up()
 
+    logger.info("Client registering")
     client.register()
+    
+    client.stop()

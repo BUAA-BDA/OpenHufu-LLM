@@ -2,18 +2,19 @@ from dataclasses import dataclass
 
 @dataclass
 class BaseConfig:
-    name: str
-    host: str
-    port: int
+    name: str = ""
+    host: str = "localhost"
+    port: int = 0
     addr: str = ""
     schema: str = "grpc"
     
-
+@dataclass
 class ServerConfig(BaseConfig):
     name: str = "server"
     host: str = "localhost"
     port: int = 8002
     
 
+@dataclass
 class ClientConfig(BaseConfig):
-    pass
+    server_name: str = "server"
