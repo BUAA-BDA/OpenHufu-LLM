@@ -1,0 +1,7 @@
+mode: 'standalone'
+client:
+  name: 'BaseClient'
+  client_num: 1
+server:
+  name: 'BaseServer'
+  model: 'Bert'

@@ -1,7 +1,7 @@
 import os
 import requests
 import time
-
+import yaml
 def download_url(url, path):
     file_name = os.path.basename(url)
     if '.' in file_name:
@@ -24,3 +24,14 @@ def download_url(url, path):
 
 def get_file_path_without_name(file_path):
     return os.path.dirname(file_path)
+
+def get_config(file_path):
+    with open(file_path, 'r') as f:
+        config = yaml.safe_load(f)
+        print(config)
+        return config
+
+def get_runner(mode):
+       if mode.lower() == 'standalone':
+           from Runner import StandaloneRunner
+           return StandaloneRunner
