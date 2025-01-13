@@ -60,7 +60,6 @@ class StreamConnection(Connection):
         ct = threading.current_thread()
         
         try:
-            logger.info(f"Processing frames on {ct.name}")
             for frame in request_iterator:
                 if not isinstance(frame, Frame):
                     logger.error(f"Invalid item in frame_queue: expected Frame, got {type(frame).__name__}")
@@ -82,7 +81,6 @@ class StreamConnection(Connection):
     def generate_output(self):
         try:
             ct = threading.current_thread()
-            logger.info(f"Generating output on {ct.name}")
             for i in self.iter_queue():
                 if not isinstance(i, Frame):
                     error_message = f"Invalid item in frame_queue: expected Frame, got {type(i).__name__}"
@@ -186,12 +184,8 @@ class GrpcDriver(Driver):
             stub = grpcStreamFuncStub(channel)
             connection = StreamConnection(driverInfo=driverInfo)
             self.add_connection(connection)
-            self.logger.info(f"查看是否有frame: {connection.frame_queue.qsize()}")
-
             received = stub.processStream(connection.generate_output())
-            for frame in received:
-                self.logger.info(f"Received frame: {frame}")
-            # connection.process_frames(received)
+            connection.process_frames(received)
         except grpc.RpcError as e:
             self.logger.error(f"gRPC connection error: {e}")
         except Exception as e:

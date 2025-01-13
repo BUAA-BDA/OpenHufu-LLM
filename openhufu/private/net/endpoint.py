@@ -2,9 +2,8 @@
 
 
 class Endpoint:
-    def __init__(self, name, addr):
+    def __init__(self, name):
         self.name = name
-        self.addr = addr
 
 
     def get_name(self):

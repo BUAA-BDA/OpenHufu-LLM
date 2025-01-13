@@ -3,7 +3,7 @@ import logging
 
 from pathlib import Path
 
-from openhufu.private.utlis.config_class import BaseConfig
+from openhufu.private.utlis.config_class import BaseConfig, ClientConfig, ServerConfig
 
 
 def load_config(path: str) -> BaseConfig:
@@ -14,9 +14,11 @@ def load_config(path: str) -> BaseConfig:
     # read config file
     with open(path, "r") as f:
         config = yaml.safe_load(f)
-        
-    return BaseConfig(**config)
-
+    if 'server_name' not in config:
+        return ServerConfig(**config)
+    else:
+        return ClientConfig(**config)
+    
 
 def get_logger(name: str, level=logging.INFO):
     logger = logging.getLogger(name)

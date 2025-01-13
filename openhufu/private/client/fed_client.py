@@ -1,18 +1,18 @@
 
 from openhufu.private.net.client_cell import ClientCell
 from openhufu.private.utlis.config_class import ClientConfig
+from openhufu.private.utlis.util import get_logger
 
 class FederatedClient:
     def __init__(self, config: ClientConfig):
         self.cell = None
         self.config : ClientConfig = config
-    
+        self.logger = get_logger(__name__)
     
     def _create_cell(self):
         self.cell = ClientCell(config=self.config)
         self.cell.start()
         
-        self.cell.stop()
         
         
     def set_up(self):    
@@ -27,3 +27,5 @@ class FederatedClient:
         self.cell.register()
     
     
+    def stop(self):
+        self.cell.stop()

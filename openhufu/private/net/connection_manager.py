@@ -11,6 +11,11 @@ from openhufu.private.net.net_params import ConParams, DriverMode, DriverInfo
 from openhufu.private.net.endpoint import Endpoint
 from openhufu.private.net.connection_wrapper import ConnectionWrapper
 from openhufu.private.net.endpoint_wrapper import EndpointWrapper
+from openhufu.private.net.prefix import Prefix, FrameType, PREFIX_LEN
+from openhufu.private.net.message import Message
+from openhufu.private.utlis.defs import HeaderKey
+import time
+
 
 
 con_lock = threading.Lock()
@@ -25,7 +30,7 @@ def get_connection_uid():
         
     
 class ConnManager(ConnMonitor):
-    def __init__(self, cell, local_endpoint: Endpoint):
+    def __init__(self, local_endpoint: Endpoint):
         super().__init__()
         self.lock = threading.Lock()
         
@@ -35,11 +40,16 @@ class ConnManager(ConnMonitor):
         self.started = False
         self.conn_executor = ThreadPoolExecutor(max_workers=32, thread_name_prefix="conn_manager")
         self.frame_manager_executor = ThreadPoolExecutor(max_workers=32, thread_name_prefix="frame_manager")
-        self.message_receiver = cell
+        self.message_receiver = None
         
         self.local_endpoint = local_endpoint
         
         self.connections : Dict[str, ConnectionWrapper] = {}
+        self.endpoints : Dict[str, EndpointWrapper] = {}
+    
+    
+    def register_message_receiver(self, cell):
+        self.message_receiver = cell
     
     
     def add_connection_driver(self, driver: Driver, params: ConParams, mode: DriverMode):
@@ -118,7 +128,7 @@ class ConnManager(ConnMonitor):
         # if on client end, send the endpoint msg to client.
         if connection.driverInfo.mode == DriverMode.CLIENT:
             self.logger.info(f"Sending handshake to {connection.get_name()}")
-            connWrapper.send_handshake()
+            connWrapper.send_handshake(FrameType.HELLO)
         
     
     def _close_connection(self, connection: Connection):
@@ -142,20 +152,74 @@ class ConnManager(ConnMonitor):
         self.frame_manager_executor.submit(self._process_frame_task, connWrapper, frame)
     
     
+    def update_endpoint(self, message: Message, connWrapper: ConnectionWrapper):
+        try:
+            endpoint_name = message.get_from_headers(HeaderKey.SOURCE_ENDPOINT)
+        except Exception as e:
+            self.logger.error(f"Invalid message, no endpoint name in message: {message}")
+            raise e
+        
+        if endpoint_name not in self.endpoints.keys():
+            self.logger.info(f"New endpoint: {endpoint_name}")
+            endpont_wrapper = EndpointWrapper(Endpoint(name=endpoint_name))
+            self.endpoints[endpoint_name] = endpont_wrapper
+        
+        endpont_wrapper = self.endpoints[endpoint_name]
+        endpont_wrapper.add_connection(connWrapper)
+    
+    
     def _process_frame_task(self, connWrapper: ConnectionWrapper, frame):
         # TODO: Unwrap the frame to message
-        self._process_message(frame)
+        ct = threading.current_thread()
+        self.logger.info(f"Processing frame from {connWrapper.get_name()} on thread {ct.name}")
+        try:
+            prefix : Prefix = Prefix.parse(frame)
+            message = msgpack.unpackb(frame[PREFIX_LEN:])
+            message = Message.from_dict(message)
+        except Exception as e:
+            self.logger.error(f"Error unpacking frame: {e}")
+        
+    
+        if FrameType(prefix.frame_type) in {FrameType.HELLO, FrameType.HI}:
+            if prefix.frame_type == FrameType.HELLO.value:
+                self.logger.info(f"Received HELLO from {connWrapper.get_name()}, sending HI")
+                connWrapper.send_handshake(FrameType.HI)
+            else:
+                self.logger.info(f"Received HI from {connWrapper.get_name()}")
+            self.update_endpoint(message, connWrapper)
+        else:
+            self._process_message(message)
     
     
-    def _process_message(self, messgae):
+    def _process_message(self, messgae: Message):
         self.message_receiver.process_message(messgae)
 
     
-    def send_message(self, endpoint, frame):
+    def send_message(self, message: Message):
+        destination_endpoint = message.get_from_headers(HeaderKey.DESTINATION_ENDPOINT)
         
-        if self.endpoint_wrapper is None:
-            raise Exception(f"Endpoint {endpoint} not found")
+        timeout = 5
+        wait_interval = 0.1
+        start_time = time.time()
+        with self.lock:
+            while destination_endpoint not in self.endpoints:
+                elapsed = time.time() - start_time
+                if elapsed >= timeout:
+                    self.logger.error(f"Endpoint {destination_endpoint} not available")
+                    raise Exception(f"Endpoint {destination_endpoint} not available")
+                self.lock.release()
+                time.sleep(wait_interval)
+                self.lock.acquire()               
+                
+        endpoint_wrapper = self.endpoints.get(destination_endpoint)
+        if endpoint_wrapper is None:
+            self.logger.error(f"Endpoint {destination_endpoint} not found")
+            raise Exception(f"Endpoint {destination_endpoint} not found")
+        stream_id = endpoint_wrapper.next_stream_id()
+        conn_wrapper = endpoint_wrapper.get_connection(stream_id)
         
+        prefix = Prefix(0, stream_id=stream_id, frame_type=FrameType.DATA.value)
+        conn_wrapper.send_data(prefix=prefix, message=message)
         
         
 class FrameProcessor(FrameReceiver):
@@ -166,5 +230,4 @@ class FrameProcessor(FrameReceiver):
     
     
     def process_frame(self, frame_data):
-        self.logger.info(f"Processing frame: {frame_data}") 
         self.conn_manager.process_frame(self.connWrapper, frame_data)
