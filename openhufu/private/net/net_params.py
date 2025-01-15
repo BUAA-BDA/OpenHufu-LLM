@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 
-MAX_FRAME_SIZE = 2 * 1024 * 1024 * 1024 - 2 * 1024 * 1024 # 2GB - 2MB
+MAX_FRAME_SIZE = 2 * 1024 * 1024 - 2 * 1024 # 2GB - 2MB
 
 @dataclass
 class ConParams:
