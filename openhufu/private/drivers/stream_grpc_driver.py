@@ -15,8 +15,8 @@ from openhufu.private.net.net_params import MAX_FRAME_SIZE
 logger = get_logger("stream_grpc_driver")
 
 options = [
-    ('grpc.max_send_message_length', MAX_FRAME_SIZE),
-    ('grpc.max_receive_message_length', MAX_FRAME_SIZE)
+    ('grpc.max_send_message_length', MAX_FRAME_SIZE + 8),
+    ('grpc.max_receive_message_length', MAX_FRAME_SIZE + 8)
 ]
 
 class StreamConnection(Connection):
