@@ -10,8 +10,7 @@ from openhufu.private.drivers.proto.grpc_stream_pb2_grpc import grpcStreamFuncSe
 from openhufu.private.drivers.proto.grpc_stream_pb2 import Frame
 from openhufu.private.drivers.driver import Driver
 from openhufu.private.utlis.util import get_logger
-
-MAX_FRAME_SIZE = 2 * 1024 * 1024 * 1024 - 2 * 1024 * 1024 # 2GB - 2MB
+from openhufu.private.net.net_params import MAX_FRAME_SIZE
 
 logger = get_logger("stream_grpc_driver")
 
