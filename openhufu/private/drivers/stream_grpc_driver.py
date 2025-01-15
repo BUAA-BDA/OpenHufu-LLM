@@ -11,7 +11,14 @@ from openhufu.private.drivers.proto.grpc_stream_pb2 import Frame
 from openhufu.private.drivers.driver import Driver
 from openhufu.private.utlis.util import get_logger
 
+MAX_FRAME_SIZE = 2 * 1024 * 1024 * 1024 - 2 * 1024 * 1024 # 2GB - 2MB
+
 logger = get_logger("stream_grpc_driver")
+
+options = [
+    ('grpc.max_send_message_length', MAX_FRAME_SIZE),
+    ('grpc.max_receive_message_length', MAX_FRAME_SIZE)
+]
 
 class StreamConnection(Connection):
     """StreamConnection class for handling network connections.
@@ -134,7 +141,7 @@ class Server:
         self.driver: Driver = driver
         self.driverInfo = driverInfo
         self.max_workers = max_workers
-        self.grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
+        self.grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers), options=options)
         self.logger = get_logger("Server")  
         
         # create a servicer
@@ -179,7 +186,7 @@ class GrpcDriver(Driver):
         connection = None
         
         try:
-            channel = grpc.insecure_channel(params.addr)
+            channel = grpc.insecure_channel(params.addr, options=options)
 
             stub = grpcStreamFuncStub(channel)
             connection = StreamConnection(driverInfo=driverInfo)
