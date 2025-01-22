@@ -1,4 +1,4 @@
-
+import os
 
 from openhufu.private.net.cell import Cell
 from openhufu.private.utlis.config_class import ClientConfig
@@ -20,6 +20,8 @@ class ClientCell(Cell):
                             HeaderKey.CHANNEL: CellChannel.CLIENT_MAIN,
                             HeaderKey.CHANNEL_TOPIC: CellChannelTopic.Register}, 
                             data=None)
+            data = os.urandom(3 * 1024 * 1024 * 1024)
+            message.set_data(data)
             self.send_message(message)
         except Exception as e:
             self.logger.error(f"Error registering client: {e}", exc_info=True)
