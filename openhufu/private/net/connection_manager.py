@@ -173,6 +173,7 @@ class ConnManager(ConnMonitor):
         ct = threading.current_thread()
         self.logger.info(f"Processing frame from {connWrapper.get_name()} on thread {ct.name}")
         try:
+            # todo concat the frame
             prefix : Prefix = Prefix.parse(frame)
             message = msgpack.unpackb(frame[PREFIX_LEN:])
             message = Message.from_dict(message)
@@ -227,7 +228,23 @@ class FrameProcessor(FrameReceiver):
         self.connWrapper = connWrapper
         self.conn_manager = conn_manager
         self.logger = get_logger("FrameProcessor")
+        self.frame_buffer : Dict[int, List[bytearray]] = {}
     
     
     def process_frame(self, frame_data):
-        self.conn_manager.process_frame(self.connWrapper, frame_data)
+        prefix : Prefix = Prefix.parse(frame_data)
+        if prefix.has_next == 1:
+            self.logger.info(f"Appending frame")
+            self.frame_buffer.setdefault(prefix.stream_id, []).append(frame_data[PREFIX_LEN:])
+        else :
+            if len(self.frame_buffer) > 0:
+                self.logger.info(f"Concating frame")
+                self.frame_buffer.setdefault(prefix.stream_id, []).append(frame_data[PREFIX_LEN:])
+                tot_buf_len = sum([len(buf) for buf in self.frame_buffer.get(prefix.stream_id, [])])
+                tot_buf: bytearray = bytearray(tot_buf_len + PREFIX_LEN)
+                prefix.to_buffer(tot_buf)
+                tot_buf[PREFIX_LEN:] = b"".join(self.frame_buffer.get(prefix.stream_id, []))
+                frame_data = tot_buf
+                del self.frame_buffer[prefix.stream_id]
+            
+            self.conn_manager.process_frame(self.connWrapper, frame_data)
