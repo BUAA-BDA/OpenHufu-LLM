@@ -1,3 +1,4 @@
+import time
 import grpc
 import queue
 from concurrent import futures
@@ -50,13 +51,14 @@ class StreamConnection(Connection):
         
         while True: 
             try:
-                yield self.frame_queue.get(timeout=5)
+                yield self.frame_queue.get(timeout=10)
             except queue.Empty:
                 # 如果队列为空且超时，记录警告并继续检查状态
                 if self.closed:
                     logger.info("Connection closed, stopping frame iteration.")
                     raise StopIteration
                 logger.warning("Frame queue is empty or processing timeout.")
+                time.sleep(5)
             except Exception as e:
                 logger.error(f"Error iterating frame queue: {e}")
                 raise StopIteration
