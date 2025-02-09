@@ -1,3 +1,5 @@
+mode: "cluster"
+role: "server"
 name: "server"
 host: "localhost"
 port: 8002

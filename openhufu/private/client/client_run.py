@@ -4,7 +4,8 @@ from pathlib import Path
 
 from openhufu.private.client.client_deployer import ClientDeployer
 from openhufu.private.utlis.config_class import BaseConfig
-from openhufu.private.utlis.util import load_config, get_logger
+from openhufu.private.utlis.util import get_logger
+from openhufu.utils import load_config
 
 
 logger = get_logger(__name__) 
