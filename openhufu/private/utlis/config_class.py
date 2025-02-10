@@ -18,3 +18,7 @@ class ServerConfig(BaseConfig):
 @dataclass
 class ClientConfig(BaseConfig):
     server_name: str = "server"
+
+@dataclass
+class StandaloneConfig(object):
+    pass

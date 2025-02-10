@@ -9,6 +9,7 @@ class CellChannel:
 class CellChannelTopic:
     Challenge = "challenge"
     Register = "register"
+    Finish = 'finish'
     
 
 class HeaderKey:
