@@ -1,3 +1,4 @@
+import time
 import grpc
 import queue
 from concurrent import futures
@@ -10,8 +11,14 @@ from openhufu.private.drivers.proto.grpc_stream_pb2_grpc import grpcStreamFuncSe
 from openhufu.private.drivers.proto.grpc_stream_pb2 import Frame
 from openhufu.private.drivers.driver import Driver
 from openhufu.private.utlis.util import get_logger
+from openhufu.private.net.net_params import MAX_FRAME_SIZE
 
 logger = get_logger("stream_grpc_driver")
+
+options = [
+    ('grpc.max_send_message_length', MAX_FRAME_SIZE + 8),
+    ('grpc.max_receive_message_length', MAX_FRAME_SIZE + 8)
+]
 
 class StreamConnection(Connection):
     """StreamConnection class for handling network connections.
@@ -44,13 +51,14 @@ class StreamConnection(Connection):
         
         while True: 
             try:
-                yield self.frame_queue.get(timeout=5)
+                yield self.frame_queue.get(timeout=10)
             except queue.Empty:
                 # 如果队列为空且超时，记录警告并继续检查状态
                 if self.closed:
                     logger.info("Connection closed, stopping frame iteration.")
                     raise StopIteration
                 logger.warning("Frame queue is empty or processing timeout.")
+                time.sleep(5)
             except Exception as e:
                 logger.error(f"Error iterating frame queue: {e}")
                 raise StopIteration
@@ -134,7 +142,7 @@ class Server:
         self.driver: Driver = driver
         self.driverInfo = driverInfo
         self.max_workers = max_workers
-        self.grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
+        self.grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers), options=options)
         self.logger = get_logger("Server")  
         
         # create a servicer
@@ -179,7 +187,7 @@ class GrpcDriver(Driver):
         connection = None
         
         try:
-            channel = grpc.insecure_channel(params.addr)
+            channel = grpc.insecure_channel(params.addr, options=options)
 
             stub = grpcStreamFuncStub(channel)
             connection = StreamConnection(driverInfo=driverInfo)

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 
+MAX_FRAME_SIZE = 100 * 1024 * 1024 # 100MB
 
 @dataclass
 class ConParams:
