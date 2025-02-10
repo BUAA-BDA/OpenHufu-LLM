@@ -3,7 +3,7 @@ import logging
 
 from pathlib import Path
 
-from openhufu.private.utlis.config_class import BaseConfig, ClientConfig, ServerConfig
+from openhufu.private.utlis.config_class import BaseConfig, ClientConfig, ServerConfig, StandaloneConfig
 
 
 def load_config(path: str) -> BaseConfig:
@@ -14,6 +14,8 @@ def load_config(path: str) -> BaseConfig:
     # read config file
     with open(path, "r") as f:
         config = yaml.safe_load(f)
+    if config['mode'].lower() == 'standalone':
+        return StandaloneConfig(**config)
     if 'server_name' not in config:
         return ServerConfig(**config)
     else:

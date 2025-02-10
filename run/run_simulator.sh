@@ -1,0 +1,1 @@
+python -m openhufu.private.simulator.simulator_run -c ./run/config/simulation.yaml

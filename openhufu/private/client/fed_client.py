@@ -2,7 +2,7 @@
 from openhufu.private.net.client_cell import ClientCell
 from openhufu.private.utlis.config_class import ClientConfig
 from openhufu.private.utlis.util import get_logger
-
+from openhufu.private.utlis.factory import get_cell
 class FederatedClient:
     def __init__(self, config: ClientConfig):
         self.cell = None
@@ -10,7 +10,8 @@ class FederatedClient:
         self.logger = get_logger(__name__)
     
     def _create_cell(self):
-        self.cell = ClientCell(config=self.config)
+        # self.cell = ClientCell(config=self.config)
+        self.cell = get_cell(config=self.config)
         self.cell.start()
         
         

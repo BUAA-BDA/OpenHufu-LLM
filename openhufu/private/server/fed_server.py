@@ -6,6 +6,7 @@ from openhufu.private.utlis.config_class import ServerConfig
 from openhufu.private.net.cell import Cell
 from openhufu.private.net.message import Message
 from openhufu.private.utlis.defs import CellChannel, CellChannelTopic, HeaderKey
+from openhufu.private.utlis.factory import get_cell
 
 class FederatedServer:
     def __init__(self, config: ServerConfig):
@@ -28,7 +29,8 @@ class FederatedServer:
     
     
     def deploy(self):
-        self.cell = Cell(self.config)
+        # self.cell = Cell(self.config)
+        self.cell = get_cell(self.config)
         self.cell.start()
         
         self._register_server_cbs()
