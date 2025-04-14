@@ -1,0 +1,1 @@
+python -m openhufu.private.client.client_run -c ./run/config/client.yaml

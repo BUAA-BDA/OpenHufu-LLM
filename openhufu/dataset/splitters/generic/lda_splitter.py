@@ -51,5 +51,5 @@ class LDASplitter(BaseSplitter):
             for client_id, split in enumerate(splits):
                 client_indices[client_id].extend(split)
 
-        subsets = [self.subset(dataset, idxs) for idxs in client_indices]
+        subsets = [self.subset(dataset, [int(idx) for idx in idxs]) for idxs in client_indices]
         return subsets

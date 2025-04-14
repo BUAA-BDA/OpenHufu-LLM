@@ -1,0 +1,1 @@
+python -m openhufu.private.server.server_run -c ./run/config/server.yaml
