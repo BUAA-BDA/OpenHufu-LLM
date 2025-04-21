@@ -1,1 +1,1 @@
-from randomSelect import client_selection
+from .randomSelect import client_selection

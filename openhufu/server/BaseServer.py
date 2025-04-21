@@ -1,16 +1,17 @@
-from worker import Worker
+from openhufu.worker import Worker
 import openhufu.private.utlis.defs as defs
 from openhufu.aggregator.fedavg import FedAvg
-from scheduler import client_selection
+from openhufu.scheduler import client_selection
 class BaseServer(Worker):
 
     def __init__(self, config, com_manager):
         super().__init__(-1, com_manager)
+        # self.__register_all_callback()
         self.config = config
         self.client_id2lora = dict()
         self.client_id2weight = dict()
         self.selected_clients = set()
-        self.global_rounds_remain = config.epoch
+        self.global_rounds_remain = config.num_communication_rounds
 
     def agg_params(self, client_id, lora, weight):
         if client_id in self.selected_clients:
@@ -33,14 +34,14 @@ class BaseServer(Worker):
 
    
 
-    def __register_all_callback(self):
+    def _register_all_callback(self):
         # self.msg_handlers[defs.CellChannelTopic.Share] = self.agg_params
-        self.__register_handler(defs.CellChannelTopic.Share, self.agg_params)
+        self._register_handler(defs.CellChannelTopic.Share, self.agg_params)
 
     def msg_handler(self, msg_type):
         return self.msg_handlers[msg_type]
     
     def deploy(self):
         self.selected_clients = client_selection(self.com_manager.get_all_client_id(), self.config.client_selection_frac)
-        for i in self.selected_clients():
-                self.com_manager.send_message(i, defs.CellChannel.CLIENT_MAIN, defs.CellChannelTopic.Update, epoch=self.config.epoch - self.global_rounds_remain) 
+        for i in self.selected_clients:
+                self.com_manager.send_message(i, defs.CellChannel.CLIENT_MAIN, defs.CellChannelTopic.Start, epoch=self.config.num_communication_rounds - self.global_rounds_remain) 

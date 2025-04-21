@@ -39,6 +39,7 @@ class StandaloneCell(object):
 
     # def send_message(id, CellChannel.SERVER_MAIN, CellChannelTopic.Finish, None)
     def send_message(self, target , channel: CellChannel , topic: CellChannelTopic, **kwargs):
+        print(self.registered_cbs[topic])
         callback = getattr(self.id2worker[target], self.registered_cbs[topic], None)
         callback(**kwargs)
 

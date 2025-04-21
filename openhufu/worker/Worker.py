@@ -4,7 +4,7 @@ class Worker(object):
         self.id = id
         self.msg_handlers = dict()
         self.com_manager = com_manager
-        self.__register_all_callback()
+        self._register_all_callback()
 
     def get_handler(self, msg_type: str):
         return self.msg_handlers[msg_type]
@@ -14,9 +14,12 @@ class Worker(object):
         print(f'I am Client, I rec message from {msg.sender}')
 
     
-    def __register_all_callback(self):
-        pass 
+    def _register_all_callback(self):
+         print("execute father") 
     
-    def __register_handler(self, topic: defs.CellChannelTopic, callback):
+    def _register_handler(self, topic: defs.CellChannelTopic, callback):
         self.msg_handlers[topic] = callback
         self.com_manager.register_request_cb(None, topic, callback)
+
+    def deploy(self):
+        pass

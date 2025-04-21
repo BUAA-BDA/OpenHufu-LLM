@@ -1,4 +1,4 @@
-from worker import Worker
+from openhufu.worker import Worker
 from transformers import AutoTokenizer, AutoModelForCausalLM, Trainer, TrainingArguments, DataCollatorForSeq2Seq
 import torch
 from datasets import load_dataset, load_from_disk
@@ -27,6 +27,7 @@ import openhufu.private.utlis.defs as defs
 class BaseClient(Worker):
     def __init__(self, id, config, com_manager):
         super().__init__(id, com_manager)
+        # self.__register_all_callback()
         # self._register_handler()
         # self.model = config.model
         self.config = config
@@ -42,10 +43,10 @@ class BaseClient(Worker):
         )
 
         self.tokenizer.padding_side = "left"
-        self.local_data = load_from_disk(os.path.join(self.config.local_data_path, str(self.id)))
-        self.local_train_dataset = self.local_data.shuffle().map(self.generate_and_tokenize_prompt)
+        self.local_data = load_from_disk(os.path.join(self.config.local_data_path, f"client_{self.id + 1}_train"))
+        self.prompter = Prompter(config.prompt_template_name)
+        self.local_train_dataset = self.local_data.shuffle().map(self.__generate_and_tokenize_prompt)
         self.local_output_dir = os.path.join(self.config.output_dir, 'trainer_saved', str(self.id))
-        self.prompter = Prompter(config.prompt_template)
         self.epoch = 0
 
     def __tokenize(self, prompt, add_eos_token=True):
@@ -98,7 +99,7 @@ class BaseClient(Worker):
                             ):
         self.train_args = TrainingArguments(
             per_device_train_batch_size=self.config.local_micro_batch_size,
-            gradient_accumulation_steps=self.config.gradient_accumulation_steps,
+            gradient_accumulation_steps= self.config.local_batch_size // self.config.local_micro_batch_size,
             warmup_steps=0,
             num_train_epochs=self.config.local_num_epochs,
             learning_rate=self.config.local_learning_rate,
@@ -160,11 +161,12 @@ class BaseClient(Worker):
         self.perform_local_train(epoch)
         
 
-    def __register_all_callback(self):
+    def _register_all_callback(self):
         # self.msg_handlers[defs.CellChannelTopic.Update] = self.send_model_params_to_server
         # self.msg_handlers
-        self.__register_handler(defs.CellChannelTopic.Update, self.send_model_params_to_server)
-        self.__register_handler(defs.CellChannelTopic.Start, self.perform_local_train)
+        print("execute son")
+        self._register_handler(defs.CellChannelTopic.Update, self.send_model_params_to_server)
+        self._register_handler(defs.CellChannelTopic.Start, self.perform_local_train)
     
    
 
