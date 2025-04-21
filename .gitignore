@@ -164,6 +164,6 @@ cython_debug/
 # dataset
 /dataset
 
-./client_output
+/client_output
 
-./openhufu/dataset/client_datasets
+/openhufu/dataset/client_datasets
