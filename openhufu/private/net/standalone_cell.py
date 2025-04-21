@@ -38,10 +38,12 @@ class StandaloneCell(object):
         self.id2worker[id] = part
 
     # def send_message(id, CellChannel.SERVER_MAIN, CellChannelTopic.Finish, None)
-    def send_message(self, id, channel: CellChannel, topic: CellChannelTopic, data):
-        callback = getattr(self.id2worker[id], self.registered_cbs[topic], None)
-        callback(data)
+    def send_message(self, target , channel: CellChannel , topic: CellChannelTopic, **kwargs):
+        callback = getattr(self.id2worker[target], self.registered_cbs[topic], None)
+        callback(**kwargs)
 
+    def get_all_client_id(self):
+        return [key for key in self.id2worker.keys()]
 
 
 

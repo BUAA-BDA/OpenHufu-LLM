@@ -10,7 +10,9 @@ class CellChannelTopic:
     Challenge = "challenge"
     Register = "register"
     Finish = 'finish'
-    
+    Share = 'share'
+    Update = 'update'
+    Start = 'start'
 
 class HeaderKey:
     # endpoint name

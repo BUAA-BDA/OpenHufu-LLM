@@ -1,12 +1,22 @@
+import openhufu.private.utlis.defs as defs
 class Worker(object):
-    def __init__(self, id, com_manager, model=None):
+    def __init__(self, id, com_manager):
         self.id = id
-        self.model = model
-        self.handler_dict = dict()
+        self.msg_handlers = dict()
         self.com_manager = com_manager
+        self.__register_all_callback()
 
-    def model(self):
-        return self.model
+    def get_handler(self, msg_type: str):
+        return self.msg_handlers[msg_type]
+    
 
-    def handler(self, msg_type: str):
-        return self.handler_dict[msg_type]
+    def __test(self, msg):
+        print(f'I am Client, I rec message from {msg.sender}')
+
+    
+    def __register_all_callback(self):
+        pass 
+    
+    def __register_handler(self, topic: defs.CellChannelTopic, callback):
+        self.msg_handlers[topic] = callback
+        self.com_manager.register_request_cb(None, topic, callback)
