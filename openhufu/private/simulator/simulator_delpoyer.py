@@ -23,7 +23,7 @@ class SimulatorDeployer:
         server_class = getattr(openhufu.server, 'BaseServer', None)
         # server_class = load_class('openhufu.server', 'Server')
         import openhufu.client
-        client_class = getattr(openhufu.client, 'BaseClient', None)
+        client_class = getattr(openhufu.client, 'LoraClient', None)
         server = server_class(self.config, self.cell)
         self.cell.add_participant(server)
         client_id_list = list()

@@ -29,7 +29,7 @@ def get_file_path_without_name(file_path):
 
 
 class IDGenerator:
-    _count = -1
+    _count = -2
 
     @classmethod
     def next_id(cls):

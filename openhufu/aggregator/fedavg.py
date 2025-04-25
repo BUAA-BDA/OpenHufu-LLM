@@ -12,11 +12,13 @@ def FedAvg(selected_clients_set,id2params, id2weight, epoch):
 
     weight_sum = sum(value for value in id2weight.values())
     weighted_single_weights = None
-    for client_id in enumerate(selected_clients_set):
+    for client_id in selected_clients_set:
         # single_output_dir = os.path.join(output_dir, str(epoch), "local_output_{}".format(client_id),
         #                                  "pytorch_model.bin")
         # single_weights = torch.load(single_output_dir)
-        single_weights = id2params[client_id]
+        # why it is a tuple?
+        single_weights = id2params[client_id][0]
+        print(single_weights)
         if weighted_single_weights == None:
              weighted_single_weights = {key: single_weights[key] * (id2weight[client_id]) for key in
                                        single_weights.keys()}

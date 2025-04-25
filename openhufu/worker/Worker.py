@@ -1,4 +1,7 @@
 import openhufu.private.utlis.defs as defs
+from openhufu.private.utlis.defs import CellChannel, CellChannelTopic
+import logging
+logger = logging.getLogger(__name__)
 class Worker(object):
     def __init__(self, id, com_manager):
         self.id = id
@@ -9,6 +12,9 @@ class Worker(object):
     def get_handler(self, msg_type: str):
         return self.msg_handlers[msg_type]
     
+    def send_message(self, target , channel: CellChannel , topic: CellChannelTopic, **kwargs):
+        logger.info(f"worker:{self.id} send topic:{topic} to worker:{target}")
+        self.com_manager.send_message(target, channel, topic, **kwargs)
 
     def __test(self, msg):
         print(f'I am Client, I rec message from {msg.sender}')

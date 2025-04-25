@@ -29,3 +29,11 @@ cutoff_len: 512
 train_on_inputs: true
 group_by_length: false
 device_map: 'auto'
+
+lora:
+  lora_r: 16
+  lora_alpha: 16
+  target_modules: ["q_proj"]
+  lora_dropout: 0.05
+  bias: "none"
+  task_type: "CAUSAL_LM"

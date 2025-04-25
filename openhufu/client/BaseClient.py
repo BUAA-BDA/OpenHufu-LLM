@@ -11,6 +11,7 @@ from peft import (
 
 from openhufu.utils import Prompter
 import openhufu.private.utlis.defs as defs
+
 # 客户端用的局部超参数：
 # local_batch_size: int = 64 # 64,
 # local_micro_batch_size: int = 8
@@ -79,6 +80,7 @@ class BaseClient(Worker):
         return tokenized_full_prompt
     
     def __init_local_training(self):
+        self.model.config.use_cache = False
         self.params_dict_new = OrderedDict((name, param.detach()) for name, param in self.model.named_parameters() if
                                            "default" in name)
         self.model.state_dict = (
@@ -135,13 +137,14 @@ class BaseClient(Worker):
         # local_dataset_len_dict[self.client_id] = len(self.local_train_dataset)
         # 发送本地数据个数
         local_lora_weight = self.model.state_dict()
-        single_output_dir = os.path.join(self.output_dir, str(self.epoch), "local_output_{}".format(self.client_id))
+        single_output_dir = os.path.join(self.local_output_dir, str(self.epoch), "local_output_{}".format(self.id))
         os.makedirs(single_output_dir, exist_ok=True)
         torch.save(local_lora_weight, single_output_dir + "/pytorch_model.bin")
         # torch.save(local_embedding_weight, self.tem_path + f"/local_embedding{self.client_id}.bin")
         # 无需还原
         # previously_selected_clients_set = previously_selected_clients_set | set({self.client_id})
         # last_client_id = self.client_id
+        # print(local_lora_weight)
         return local_lora_weight,  # last_client_id
 
     def perform_local_train(self, epoch):
@@ -152,19 +155,20 @@ class BaseClient(Worker):
         lora_weight = self.__terminate_local_training()
         local_dataset_size = len(self.local_data)
         # self, id , channel: CellChannel , topic: CellChannelTopic, **kwargs
-        self.com_manager.send_message(target=-1,channel=defs.CellChannel.CLIENT_MAIN, 
+        # assert(isinstance(lora_weight, set))
+        self.send_message(target=-1,channel=defs.CellChannel.CLIENT_MAIN, 
                                       topic=defs.CellChannelTopic.Share, client_id = self.id, lora = lora_weight, weight = local_dataset_size)
 
-    def send_model_params_to_server(self, lora, epoch):
+    def send_model_params_to_server(self, update, epoch):
         # 每次重新创建一个Trainer
-        set_peft_model_state_dict(self.model,lora,'default')
+        set_peft_model_state_dict(self.model, update,'default')
         self.perform_local_train(epoch)
         
 
     def _register_all_callback(self):
         # self.msg_handlers[defs.CellChannelTopic.Update] = self.send_model_params_to_server
         # self.msg_handlers
-        print("execute son")
+        # print("execute son")
         self._register_handler(defs.CellChannelTopic.Update, self.send_model_params_to_server)
         self._register_handler(defs.CellChannelTopic.Start, self.perform_local_train)
     
