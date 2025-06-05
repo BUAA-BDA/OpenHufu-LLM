@@ -22,5 +22,4 @@ if __name__ == "__main__":
     args = parse_args()
     config = load_config(args.config)
     deployer = ServerDeployer(config=config)
-    
     server = deployer.deploy()

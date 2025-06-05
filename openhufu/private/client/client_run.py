@@ -24,15 +24,16 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    config : BaseConfig = load_config(args.config)
+    config = load_config(args.config)
     print(config)
     deployer = ClientDeployer(config=config)
     
     client = deployer.create_client()
     
-    client.set_up()
+    client.set_up() # 会安装cell
 
     logger.info("Client registering")
     client.register()
     
     client.stop()
+    # client.perform_local_train()

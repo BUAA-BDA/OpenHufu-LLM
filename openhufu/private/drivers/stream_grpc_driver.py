@@ -83,7 +83,7 @@ class StreamConnection(Connection):
  
     def close(self):
         self.closed = True
-        self.frame_queue.shutdown()
+        # self.frame_queue.shutdown()
     
     
     def generate_output(self):

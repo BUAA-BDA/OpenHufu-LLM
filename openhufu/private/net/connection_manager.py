@@ -188,8 +188,8 @@ class ConnManager(ConnMonitor):
             else:
                 self.logger.info(f"Received HI from {connWrapper.get_name()}")
             self.update_endpoint(message, connWrapper)
-        else:
-            self._process_message(message)
+        # else:
+        self._process_message(message)
     
     
     def _process_message(self, messgae: Message):
