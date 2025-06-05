@@ -21,10 +21,10 @@ num_clients: 3
 # restart_from_tem: true
 
 # 本地训练参数
-local_batch_size: 64
+local_batch_size: 32
 local_micro_batch_size: 8
 local_num_epochs: 10
-local_learning_rate: 3.0e-2
+local_learning_rate: 5.0e-4
 local_val_set_size: 0
 local_save_steps: 3
 cutoff_len: 512
@@ -36,7 +36,7 @@ group_by_length: false
 device_map: 'auto'
 
 lora:
-  lora_r: 16
+  lora_r: 4
   lora_alpha: 16
   target_modules: ["q_proj"]
   lora_dropout: 0.05
