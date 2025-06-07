@@ -9,6 +9,7 @@ from openhufu.private.net.endpoint import Endpoint
 from openhufu.private.net.message import Message
 from openhufu.private.utlis.util import get_logger
 from openhufu.private.utlis.defs import HeaderKey, CellChannelTopic
+
 logger = get_logger("cell")
 
 class Cell:
@@ -76,25 +77,24 @@ class Cell:
             
             
     def process_message(self, message: Message):
-        channel_topic = message.get_from_headers(HeaderKey.CHANNEL_TOPIC)
-        logger.info(f"recv message {channel_topic} ")
-        if channel_topic == CellChannelTopic.Register:
-            
-            source_endpoint = message.get_from_headers(HeaderKey.SOURCE_ENDPOINT)
-            client_id = self.id_counter  # 假设客户端在data中提供了client_id，否则使用source_endpoint
-            # self.register_client(client_id, source_endpoint) register_client
-            self.id_counter += 1
-            self.id2worker[client_id] = source_endpoint
-            # if CellChannelTopic.Register in self.registered_cbs:
-            #     self.registered_cbs[CellChannelTopic.Register](message)
-            print("yes")
-            self.registered_cbs[CellChannelTopic.Register](client_id)
-        elif channel_topic in self.registered_cbs:
-            filtered_dict = {k: v for k, v in message['data'].items() if k not in ['target','channel', 'topic']}
-            self.registered_cbs[channel_topic](**filtered_dict)
-        # if channel_topic == CellChannelTopic.Register:
-        #     self.registered_cbs[CellChannelTopic.Register](message)
-            
+        try :
+            channel_topic = message.get_from_headers(HeaderKey.CHANNEL_TOPIC)
+            logger.info(f"recv message {channel_topic} ")
+            if channel_topic == CellChannelTopic.Register:
+                source_endpoint = message.get_from_headers(HeaderKey.SOURCE_ENDPOINT)
+                client_id = self.id_counter  
+                self.id_counter += 1
+                self.id2worker[client_id] = source_endpoint
+                self.registered_cbs[CellChannelTopic.Register](client_id)
+            elif channel_topic in self.registered_cbs:
+                # print(message['data'])
+                # 取回来的data没什么问题
+                filtered_dict = {k: v for k, v in message['data'].items() if k not in ['target','channel', 'topic']}
+                for k,v in filtered_dict.items():
+                    print(k)
+                self.registered_cbs[channel_topic](**filtered_dict)
+        except Exception as e:
+            logger.error(f"process message failed because of {e}")
             
     def _send_message(self, message: Message):
         self.conn_manager.send_message(message)

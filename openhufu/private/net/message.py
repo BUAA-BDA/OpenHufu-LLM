@@ -1,5 +1,5 @@
 from typing import Dict, Any
-
+from openhufu.private.utlis.TensorEncoder import custom_packb, custom_unpackb
 
 class Message(Dict[str, Any]):
     def __init__(self, headers: Dict[str, Any], data: Any):
@@ -53,6 +53,15 @@ class Message(Dict[str, Any]):
     def __str__(self):
         return f"Message({self.get_headers()}, {self.get_data()})"
     
+    @classmethod
+    def deserialize(cls, serialized_data: bytes) -> 'Message':
+        """从字节反序列化回Message对象"""
+        message_dict = custom_unpackb(serialized_data)
+        return cls.from_dict(message_dict)
+    
+    def serialize(self) -> bytes:
+        """将Message对象序列化为字节"""
+        return custom_packb(dict(self))
     
     
         

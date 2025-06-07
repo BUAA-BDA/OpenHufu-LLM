@@ -21,6 +21,7 @@ class ClientCell(Cell):
                             HeaderKey.CHANNEL_TOPIC: CellChannelTopic.Register}, 
                             data=None)
             # data = os.urandom(3 * 1024 * 1024 * 1024)
+            self.id2worker[-1] = self.node_info.server_name
             message.set_data("register")
             self._send_message(message)
         except Exception as e:

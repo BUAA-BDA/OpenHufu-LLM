@@ -28,6 +28,7 @@ class FederatedServer(Worker):
 
     def agg_params(self, client_id, lora, weight):
         # assert(isinstance(lora, set))
+        logger.info(f'server recv param from client_{client_id}, param type is{type(lora)}')
         if client_id in self.selected_clients:
             self.client_id2lora[client_id] = lora
             self.client_id2weight[client_id] = weight
@@ -37,26 +38,22 @@ class FederatedServer(Worker):
             # selected_clients_set,id2params, id2weight, epoch
             if self.global_rounds_remain == 0:
                 return
+            logger.info(f'server recv all param, perform agg')
             agg_res = FedAvg(selected_clients_set=self.selected_clients, id2params=self.client_id2lora, 
                    id2weight=self.client_id2weight, epoch=self.config.num_communication_rounds - self.global_rounds_remain)
+            print(type(agg_res))
             self.selected_clients = client_selection(self.com_manager.get_all_client_id(), self.config.client_selection_frac)
             self.client_id2lora.clear()
             self.client_id2weight.clear()
             self.global_rounds_remain -= 1
-            for i in self.selected_clients:
-                
+            for i in self.selected_clients:   
                 self.send_message(i, defs.CellChannel.CLIENT_MAIN, defs.CellChannelTopic.Update, update=agg_res, epoch=self.config.num_communication_rounds - self.global_rounds_remain) 
 
-    # def _register_server_cbs(self):
-    #     # self.cell.register_request_cb(CellChannel.SERVER_MAIN, CellChannelTopic.Challenge, self.client_challenge)
-    #     self.cell.register_request_cb(CellChannel.SERVER_MAIN, CellChannelTopic.Register, self.client_register)
-        
-    
+
     def client_register(self, client_id):
-        # source_endpoint = message.get_from_headers(HeaderKey.SOURCE_ENDPOINT)
-        # dest_endpoint = message.get_from_headers(HeaderKey.DESTINATION_ENDPOINT)
         self.logger.info(f"Client {client_id} registered")
         # 在注册的时候把id分配给它
+        self.selected_clients.add(client_id)
         self.send_message(client_id, defs.CellChannel.CLIENT_MAIN, defs.CellChannelTopic.Start, epoch=self.config.num_communication_rounds - self.global_rounds_remain)
         
         
@@ -70,16 +67,6 @@ class FederatedServer(Worker):
     
     def deploy(self):
         self.com_manager.start()
-        
-        # self._register_server_cbs()
-        # self.selected_clients = client_selection(self.com_manager.get_all_client_id(), self.config.client_selection_frac)
-        # for i in self.selected_clients:
-        #     self.logger.info(f'server send start to client{i}')
-        #     self.send_message(i, defs.CellChannel.CLIENT_MAIN, defs.CellChannelTopic.Start, 
-        #                     epoch=self.config.num_communication_rounds - self.global_rounds_remain)
-        # while self.global_rounds_remain > 0:
-        #     # 可以使用一个简单的等待，或者更好的是一个事件通知机制
-        #     time.sleep(10)  # 每10秒检查一次状态
         # TODO: stop可能有问题 导致了死锁
         self.com_manager.stop()
         

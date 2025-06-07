@@ -1,7 +1,9 @@
 import openhufu.private.utlis.defs as defs
 from openhufu.private.utlis.defs import CellChannel, CellChannelTopic
 import logging
-logger = logging.getLogger(__name__)
+from openhufu.private.utlis.util import get_logger
+
+logger = get_logger("worker")
 class Worker(object):
     def __init__(self, id, com_manager):
         self.id = id

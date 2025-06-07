@@ -146,12 +146,16 @@ class FederatedClient(Worker):
         # self, id , channel: CellChannel , topic: CellChannelTopic, **kwargs
         # assert(isinstance(lora_weight, set))
         logger.info('local train finished, start to send param to server')
+        print(f"state_dict_type:{type(lora_weight)})")
+        print(lora_weight)
         self.send_message(target=-1,channel=defs.CellChannel.CLIENT_MAIN, 
                                       topic=defs.CellChannelTopic.Share, client_id = self.id, lora = lora_weight, weight = local_dataset_size)
 
     def send_model_params_to_server(self, update, epoch):
         # 每次重新创建一个Trainer
+        logger.info("client recv update, do local train and upload param")
         set_peft_model_state_dict(self.model, update,'default')
+        logger.info("ojohojsoidhaiosohdoasuhd")
         self.perform_local_train(epoch)
         
 
