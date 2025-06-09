@@ -20,20 +20,21 @@ class SimulatorDeployer:
     def deploy(self):
         self.cell = get_cell(self.config)
         import openhufu.server
-        server_class = getattr(openhufu.server, 'serverDemo', None)
+        server_class = getattr(openhufu.server, 'BaseServer', None)
         # server_class = load_class('openhufu.server', 'Server')
         import openhufu.client
-        client_class = getattr(openhufu.client, 'clientDemo', None)
-        server = server_class(self.config)
+        client_class = getattr(openhufu.client, 'LoraClient', None)
+        server = server_class(self.config, self.cell)
         self.cell.add_participant(server)
         client_id_list = list()
         for i in range(0, self.config.client.num):
             # TODO: yaml的格式要设计 至少要保证与server client配置有关的内容在cluster和单机模拟下一致
             id = IDGenerator.next_id()
-            part = client_class(id, self.config)
+            part = client_class(id, self.config, self.cell)
             part.deploy()
             client_id_list.append(id)
             self.cell.add_participant(id=id, part=part)
-        server.set_client_id_list(client_id_list)
+            
+        # server.set_client_id_list(client_id_list)
         server.deploy()
 

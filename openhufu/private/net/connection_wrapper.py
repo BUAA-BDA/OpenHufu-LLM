@@ -7,7 +7,7 @@ from openhufu.private.net.message import Message
 from openhufu.private.utlis.defs import HeaderKey
 from openhufu.private.utlis.util import get_logger
 from openhufu.private.net.net_params import MAX_FRAME_SIZE
-
+from openhufu.private.utlis.TensorEncoder import custom_packb
 
 logger = get_logger(__name__)
 
@@ -42,8 +42,9 @@ class ConnectionWrapper:
     
     def send_data(self, prefix: Prefix, message: Message):
         try:
-            message_b = msgpack.packb(message)
-            
+            # message_b = msgpack.packb(message)
+            message_b = message.serialize()
+            # message_b = custom_packb(message)
             length = PREFIX_LEN + len(message_b)
             logger.info(f"Sending data of length {length}")
             if length > MAX_FRAME_SIZE:

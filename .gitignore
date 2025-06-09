@@ -163,3 +163,8 @@ cython_debug/
 
 # dataset
 /dataset
+
+/client_output
+
+/openhufu/dataset/client_datasets
+log.txt

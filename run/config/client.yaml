@@ -5,3 +5,40 @@ host: "localhost"
 port: 8002
 schema: "grpc"
 server_name: "server"
+
+
+model: 'Qwen/Qwen2.5-1.5B'
+local_data_path: "./openhufu/dataset/client_datasets"
+output_dir: 'client_output'
+tem_dir: 'TEM'
+prompt_template_name: ''
+
+# 联邦学习参数
+client_selection_frac: 1.0
+num_communication_rounds: 2
+num_clients: 3
+# num_shared_layers: 15
+# restart_from_tem: true
+
+# 本地训练参数
+local_batch_size: 32
+local_micro_batch_size: 8
+local_num_epochs: 10
+local_learning_rate: 5.0e-4
+local_val_set_size: 0
+local_save_steps: 3
+cutoff_len: 512
+
+id: 0
+# 大语言模型参数
+train_on_inputs: true
+group_by_length: false
+device_map: 'auto'
+
+lora:
+  lora_r: 4
+  lora_alpha: 16
+  target_modules: ["q_proj"]
+  lora_dropout: 0.05
+  bias: "none"
+  task_type: "CAUSAL_LM"

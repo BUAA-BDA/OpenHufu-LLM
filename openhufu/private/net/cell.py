@@ -10,12 +10,13 @@ from openhufu.private.net.message import Message
 from openhufu.private.utlis.util import get_logger
 from openhufu.private.utlis.defs import HeaderKey, CellChannelTopic
 
+logger = get_logger("cell")
 
 class Cell:
     msg_queue = []
     
-    def __init__(self, config: BaseConfig):
-        self.node_info : BaseConfig = config
+    def __init__(self, config):
+        self.node_info = config
         self.logger = get_logger(__name__)
         
         self.local_endpoint = Endpoint(name=self.node_info.name)
@@ -25,8 +26,9 @@ class Cell:
         self.conn_manager.register_message_receiver(self)
         
         self.registered_cbs = {}
-        
+        self.id2worker = {}
         self.is_client = None
+        self.id_counter = 0
 
         
         
@@ -66,7 +68,7 @@ class Cell:
         
     
     def register_request_cb(self, channel: CellChannel, topic: CellChannelTopic, cb):
-        
+        logger.info(f"handler 4 {topic} registered")
         if not callable(cb):
             raise Exception("Callback is not callable")
         
@@ -75,10 +77,43 @@ class Cell:
             
             
     def process_message(self, message: Message):
-        channel_topic = message.get_from_headers(HeaderKey.CHANNEL_TOPIC)
-        if channel_topic == CellChannelTopic.Register:
-            self.registered_cbs[CellChannelTopic.Register](message)
+        try :
+            channel_topic = message.get_from_headers(HeaderKey.CHANNEL_TOPIC)
+            logger.info(f"recv message {channel_topic} ")
+            if channel_topic == CellChannelTopic.Register:
+                source_endpoint = message.get_from_headers(HeaderKey.SOURCE_ENDPOINT)
+                client_id = self.id_counter  
+                self.id_counter += 1
+                self.id2worker[client_id] = source_endpoint
+                self.registered_cbs[CellChannelTopic.Register](client_id)
+            elif channel_topic in self.registered_cbs:
+                # print(message['data'])
+                # 取回来的data没什么问题
+                filtered_dict = {k: v for k, v in message['data'].items() if k not in ['target','channel', 'topic']}
+                for k,v in filtered_dict.items():
+                    print(k)
+                self.registered_cbs[channel_topic](**filtered_dict)
+        except Exception as e:
+            logger.error(f"process message failed because of {e}")
             
-            
-    def send_message(self, message: Message):
+    def _send_message(self, message: Message):
         self.conn_manager.send_message(message)
+
+    def send_message(self, target , channel: CellChannel , topic: CellChannelTopic, **kwargs):
+        # print(self.registered_cbs[topic])
+        # print(self.id2worker[target])
+        # callback = getattr(self.id2worker[target], self.registered_cbs[topic], None)
+        # logger.info(f"woker:{target} handle message:{topic} with {callback.__name__}")
+        # callback(**kwargs)
+        # target 2 endpoint
+        logger.info(f'send message to worker {self.id2worker[target]}')
+        message = Message(headers={HeaderKey.SOURCE_ENDPOINT: self.node_info.name,
+                            # HeaderKey.DESTINATION_ENDPOINT: self.node_info.server_name,
+                            HeaderKey.DESTINATION_ENDPOINT: self.id2worker[target],
+                            HeaderKey.CHANNEL: channel,
+                            HeaderKey.CHANNEL_TOPIC: topic}, 
+                            data=kwargs)
+        self.conn_manager.send_message(message)
+
+    def get_all_client_id(self):
+        return [key for key in self.id2worker.keys() if key != -1]

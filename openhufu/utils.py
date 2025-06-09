@@ -2,7 +2,7 @@ import os
 import requests
 import time
 from yacs.config import CfgNode as CN
-
+from typing import Union
 def download_url(url, path):
     file_name = os.path.basename(url)
     if '.' in file_name:
@@ -29,7 +29,7 @@ def get_file_path_without_name(file_path):
 
 
 class IDGenerator:
-    _count = -1
+    _count = -2
 
     @classmethod
     def next_id(cls):
@@ -70,4 +70,53 @@ def load_class(module_path, class_name):
     except (ImportError, AttributeError) as e:
         raise ImportError(f"无法加载类 '{class_name}' 从模块 '{module_path}': {e}")
 
+
+class Prompter(object):
+    __slots__ = ("template", "_verbose")
+
+    def __init__(self, template_name: str = "", verbose: bool = False):
+        self._verbose = verbose
+        # if not template_name:
+        #     # Enforce the default here, so the constructor can be called with '' and will not break.
+        #     template_name = "alpaca"
+        # # file_name = osp.join("templates", f"{template_name}.json")
+        # file_name = f"{template_name}.json"
+        # if not osp.exists(file_name):
+        #     raise ValueError(f"Can't read {file_name}")
+        # with open(file_name) as fp:
+        #     self.template = json.load(fp)
+        # if self._verbose:
+        #     print(
+        #         f"Using prompt template {template_name}: {self.template['description']}"
+        #     )
+        self.template = {
+            "prompt_input": "以下是一个描述任务的指令和一个提供进一步上下文的输入。 写一个适当的回答来完成请求。\n\n### 指令:\n{instruction}\n\n### 输入:\n{input}\n\n### 回答:\n",
+            "prompt_no_input": "以下是一个描述任务的指令。 请写一个适当的回答来完成请求。\n\n### 指令:\n{instruction}\n\n### 回答:\n",
+            "response_split": "### 回答:"    
+        }
+
+    def generate_prompt(
+        self,
+        instruction: str,
+        input: Union[None, str] = None,
+        label: Union[None, str] = None,
+    ) -> str:
+        # returns the full prompt from instruction and optional input
+        # if a label (=response, =output) is provided, it's also appended.
+        if input:
+            res = self.template["prompt_input"].format(
+                instruction=instruction, input=input
+            )
+        else:
+            res = self.template["prompt_no_input"].format(
+                instruction=instruction
+            )
+        if label:
+            res = f"{res}{label}"
+        if self._verbose:
+            print(res)
+        return res
+
+    def get_response(self, output: str) -> str:
+        return output.split(self.template["response_split"])[1].strip()
 
