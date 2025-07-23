@@ -168,3 +168,8 @@ cython_debug/
 
 /openhufu/dataset/client_datasets
 log.txt
+
+*.ipynb
+outputs/
+
+data/

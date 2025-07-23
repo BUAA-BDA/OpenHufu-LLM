@@ -1,0 +1,52 @@
+seed: 42
+cuda_visible_devices: 0
+# 原始/拆分后数据路径
+dataset:
+  name: ag_news
+  instruction_tmpl: "Based on the following news title and brief, determine which category it belongs to. The available categories are: {label_list}. Output only the category name. {input}"
+  output_tmpl: "{label}"
+  test_size: 0.1
+
+# Stage‑1 (≈1.5B) LoRA
+stage1:
+  model_name: /home/koushurui/Docs/Code/LLMs/Qwen/Qwen2.5-1.5B-Instruct
+  output_dir: outputs/slm_lora
+  lora:  # 任何 transformers.TrainingArguments 或 trl.SFTTrainer 兼容参数
+    num_train_epochs: 1
+    per_device_train_batch_size: 12
+    save_steps: 1000
+    lr_scheduler_type: cosine
+
+# 蒸馏参数
+distill:
+  prompt:
+      |
+      You are a data augmenter. Generate a title and description for a News and give its category.
+
+      The categories are: {label_list}.
+      The title should be concise and relevant to the content, while the description should provide a brief overview of the news article.
+      The title should be no more than 10 words, and the description should be no more than 50 words.
+      The output should be a JSON object with the following keys:
+      - "prompt": a task instruction + two lines of input: "Title: ..." and "Content: ...".
+      - "response": the category of the news article, which should be one of the categories in {label_list}.
+      The JSON object should be formatted as follows:
+      {{
+        "instruction": "Please classify this news into one of: {label_list}. Output the class name only.\nTitle: ...\nContent: ...",
+        "output": "..."
+      }}
+
+      Example:
+      {examples}
+
+      Generate exactly one JSON object now.
+  temperature: 0.8
+  with_llm_scoring: true
+  output_path: outputs/distilled_data.json
+
+# Stage‑2 (≈7B) LoRA
+stage2:
+  model_name: /home/koushurui/Docs/Code/LLMs/Qwen/Qwen2.5-7B-Instruct
+  output_dir: outputs/llm_lora
+  lora:
+    num_train_epochs: 3
+    per_device_train_batch_size: 2

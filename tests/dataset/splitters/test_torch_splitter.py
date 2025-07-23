@@ -1,3 +1,4 @@
+import json
 import unittest
 from torch.utils.data import Dataset
 from openhufu.dataset.splitters.custom.torch_splitter import TorchIIDSplitter, TorchLDASplitter
@@ -21,6 +22,10 @@ class TestTorchSplitter(unittest.TestCase):
     def test_lda_split(self):
         splitter = TorchLDASplitter(n_clients=self.n_clients, seed=42)
         splits = splitter(self.dataset, get_labels_fn=lambda x: x['input'], alpha=0.8)
+        for i, split in enumerate(splits):
+            split_data = [split.dataset[item] for item in split.indices]
+            with open(f'../../../dataset/rosetta_alpaca/rosetta_alpaca_split_{i}.json', 'w') as file:
+                json.dump(split_data, file)
         self.assertEqual(len(splits), self.n_clients)
 
 
